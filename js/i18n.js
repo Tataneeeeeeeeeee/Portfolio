@@ -237,6 +237,11 @@ export function t(key, params) {
   return raw.replace(/\{(\w+)\}/g, (m, name) => (name in params ? String(params[name]) : m));
 }
 
+/** Libellé dans une langue précise, sans changer la langue courante. */
+export function tIn(lang, key) {
+  return STRINGS[lang]?.[key] ?? STRINGS.en[key] ?? key;
+}
+
 /** Locale BCP-47 pour les dates et les nombres. */
 export const locale = () => (current === 'fr' ? 'fr-FR' : 'en-GB');
 
@@ -275,6 +280,31 @@ export function initLangSwitch(onSelect) {
 /** Grise le sélecteur pendant un aller-retour vers l'API de traduction. */
 export function setLangBusy(busy) {
   document.querySelector('#lang-switch')?.setAttribute('aria-busy', String(Boolean(busy)));
+}
+
+/**
+ * Petit chargement pendant un changement de langue : la page est estompée et
+ * une pastille « Traduction… » s'affiche dans la langue cible. Le chargement
+ * n'apparaît qu'après un court délai, pour ne pas clignoter quand la traduction
+ * est déjà en cache. Renvoie la fonction qui le retire.
+ */
+let loaderTimer = null;
+
+export function showLangLoader(lang, { delay = 120 } = {}) {
+  const loader = document.querySelector('#lang-loader');
+  if (!loader) return () => {};
+  loader.querySelector('.lang-loader__label').textContent = tIn(lang, 'translate.busy');
+  clearTimeout(loaderTimer); // un changement plus récent remplace le précédent
+  const timer = setTimeout(() => {
+    document.body.classList.add('is-translating');
+    loader.classList.add('is-visible');
+  }, delay);
+  loaderTimer = timer;
+  return () => {
+    clearTimeout(timer);
+    document.body.classList.remove('is-translating');
+    loader.classList.remove('is-visible');
+  };
 }
 
 /**

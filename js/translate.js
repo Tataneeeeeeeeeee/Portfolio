@@ -17,6 +17,7 @@
  * vide. Les libellés de l'interface, eux, ne passent jamais par ici (i18n.js).
  */
 import { CONFIG } from './config.js';
+import { CONTENT_FR } from './content.fr.js';
 
 export class TranslationError extends Error {
   constructor(message) {
@@ -38,8 +39,12 @@ const settings = () => ({
   ...(CONFIG.translation || {}),
 });
 
-/** Traductions écrites à la main, prioritaires sur l'API (voir CONFIG). */
-const overrideFor = (text, target) => settings().overrides?.[target]?.[text] ?? null;
+/** Contenu traduit à la main et livré avec le site (aucun appel réseau). */
+const BUNDLED = { fr: CONTENT_FR };
+
+/** Traductions écrites à la main, prioritaires sur l'API (CONFIG, puis fichiers livrés). */
+const overrideFor = (text, target) =>
+  settings().overrides?.[target]?.[text] ?? BUNDLED[target]?.[text] ?? null;
 
 /**
  * Garde-fou : une traduction automatique qui perd un nombre présent dans la
@@ -170,7 +175,7 @@ const PROVIDERS = {
   /** MyMemory : une requête GET par texte, 500 octets maximum par requête. */
   async mymemory(texts, target) {
     const { email } = settings();
-    return mapLimit(texts, 4, async (text) => {
+    return mapLimit(texts, 8, async (text) => {
       const pieces = await mapLimit(chunk(text, 460), 2, async (piece) => {
         const url = new URL('https://api.mymemory.translated.net/get');
         url.searchParams.set('q', piece);

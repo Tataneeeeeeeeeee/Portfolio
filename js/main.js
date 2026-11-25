@@ -14,7 +14,7 @@ import { $, el, notice, toast, renderHero, renderAbout, renderSkills, renderCont
 import { renderRepoSection, initModal, openRepoModal } from './projects.js';
 import { initSmoothScroll, initScrollAnimations, animateHero, initCardHover, refreshScrollTriggers } from './animations.js';
 import { initTheme } from './theme.js';
-import { initLang, setLang, getLang, applyStaticText, initLangSwitch, setLangBusy, t } from './i18n.js';
+import { initLang, setLang, getLang, applyStaticText, initLangSwitch, setLangBusy, showLangLoader, t } from './i18n.js';
 import { translateData, translateRepos, isTranslationEnabled, clearTranslationCache } from './translate.js';
 
 /** Tout ce qu'un changement de langue doit pouvoir redessiner sans refetch. */
@@ -56,7 +56,9 @@ async function boot() {
     return;
   }
 
+  const hideBootLoader = getLang() !== 'en' ? showLangLoader(getLang()) : () => {};
   state.data = await dataForLang(getLang());
+  hideBootLoader();
   renderProfile();
   animateHero();
   initScrollAnimations();
@@ -70,18 +72,37 @@ async function boot() {
     })
     .catch(() => { /* avatar is optional */ });
 
-  state.repos = await renderRepoSection($('#personal-projects'), collectRepos(), {
-    onOpen: openModal,
-    emptyMessage: t('repos.empty', { user: CONFIG.githubUsername, org: CONFIG.githubOrg }),
+  // Les descriptions sont traduites avant le premier rendu (les squelettes
+  // restent affichés entre-temps) ; state.repos garde les originaux anglais.
+  const reposPromise = collectRepos().then((repos) => {
+    state.repos = repos;
+    return translateReposIfEnabled(repos, getLang());
   });
-  // Les cartes viennent d'être posées en anglais ; on ne les redessine que si
-  // la traduction des descriptions est demandée.
-  if (getLang() !== 'en' && CONFIG.translation?.translateRepoDescriptions) await renderRepos(getLang());
+  await renderRepoGrid(reposPromise);
 
   renderRepoCount();
   initScrollAnimations();
   refreshScrollTriggers();
   renderRateLimitBadge();
+  prefetchTranslations();
+}
+
+/**
+ * Prépare en tâche de fond les autres langues pendant que le visiteur lit :
+ * au clic sur EN/FR, tout est déjà prêt. Silencieux en cas d'échec — le
+ * changement de langue refera simplement la demande.
+ */
+function prefetchTranslations() {
+  if (!isTranslationEnabled()) return;
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
+  idle(async () => {
+    for (const lang of ['fr']) {
+      if (lang === getLang() || translated.has(lang)) continue;
+      try {
+        translated.set(lang, await translateData(state.source, lang));
+      } catch { /* on réessaiera au clic */ }
+    }
+  });
 }
 
 const openModal = (repo) => openRepoModal(repo, {
@@ -136,19 +157,30 @@ async function translateReposIfEnabled(repos, lang) {
  * Les dépôts sont redessinés depuis la liste déjà en mémoire — aucun appel
  * supplémentaire à l'API GitHub.
  */
+let switchToken = 0;
+
 async function switchLanguage(lang) {
-  setLang(lang);
-  applyStaticText();
+  const token = ++switchToken;
+  const hideLoader = showLangLoader(lang);
+  try {
+    // Tout est traduit avant d'être affiché : pas de page à moitié en anglais.
+    const data = await dataForLang(lang);
+    const repos = state.repos.length ? await translateReposIfEnabled(state.repos, lang) : null;
+    if (token !== switchToken) return; // un autre changement a eu lieu entre-temps
 
-  state.data = await dataForLang(lang);
-  renderProfile();
+    setLang(lang);
+    applyStaticText();
+    state.data = data;
+    renderProfile();
+    if (repos) await renderRepoGrid(Promise.resolve(repos));
 
-  if (state.repos.length) await renderRepos(lang);
-
-  renderRepoCount();
-  renderRateLimitBadge();
-  initScrollAnimations();
-  refreshScrollTriggers();
+    renderRepoCount();
+    renderRateLimitBadge();
+    initScrollAnimations();
+    refreshScrollTriggers();
+  } finally {
+    if (token === switchToken) hideLoader();
+  }
 }
 
 /* ----------------------------------------------------------------- rendu -- */
@@ -160,10 +192,9 @@ function renderProfile() {
   renderHero(state.data, state.gh);
 }
 
-/** Redessine la grille de dépôts depuis la liste en mémoire (zéro appel API). */
-async function renderRepos(lang) {
-  const repos = await translateReposIfEnabled(state.repos, lang);
-  await renderRepoSection($('#personal-projects'), Promise.resolve(repos), {
+/** Dessine la grille de dépôts (squelettes tant que la promesse n'est pas résolue). */
+function renderRepoGrid(reposPromise) {
+  return renderRepoSection($('#personal-projects'), reposPromise, {
     onOpen: openModal,
     emptyMessage: t('repos.empty', { user: CONFIG.githubUsername, org: CONFIG.githubOrg }),
   });
