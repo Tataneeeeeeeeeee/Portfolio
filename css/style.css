@@ -159,7 +159,7 @@ body {
   background-attachment: fixed;
 }
 
-body.no-scroll { overflow: hidden; }
+body.no-scroll { overflow: hidden; padding-right: var(--scrollbar-w, 0px); }
 
 h1, h2, h3, h4 { margin: 0; line-height: 1.2; letter-spacing: -0.015em; font-weight: 600; }
 p { margin: 0; }
@@ -565,7 +565,7 @@ body.is-scrolled .nav {
 /* ------------------------------------------------------------ 7. charts -- */
 .chart--donut { display: grid; gap: 20px; }
 .chart__figure { position: relative; display: grid; place-items: center; }
-.chart__svg { width: min(190px, 60%); height: auto; }
+.chart__svg { width: min(220px, 70%); height: auto; }
 .chart__arc { animation: arcIn 0.9s var(--ease) backwards; animation-delay: var(--arc-delay, 0ms); }
 @keyframes arcIn { from { stroke-dasharray: 0 9999; } }
 .chart__center { position: absolute; display: grid; justify-items: center; pointer-events: none; }
@@ -580,18 +580,38 @@ body.is-scrolled .nav {
 .chart__empty { color: var(--text-dim); font-size: 0.85rem; }
 
 /* ------------------------------------------------------------- 7. modal -- */
-.modal { position: fixed; inset: 0; z-index: 150; display: none; align-items: center; justify-content: center; padding: clamp(10px, 3vw, 36px); }
-.modal.is-open { display: flex; }
-.modal__backdrop { position: absolute; inset: 0; background: var(--backdrop); backdrop-filter: blur(10px); animation: fade 0.3s var(--ease); }
+.modal {
+  --modal-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  position: fixed; inset: 0; z-index: 150; display: flex; align-items: center; justify-content: center;
+  padding: clamp(10px, 3vw, 36px);
+  visibility: hidden; pointer-events: none;
+  transition: visibility 0s linear 0.38s;
+}
+.modal.is-open { visibility: visible; pointer-events: auto; transition-delay: 0s; }
+.modal__backdrop {
+  position: absolute; inset: 0; background: var(--backdrop); backdrop-filter: blur(10px);
+  opacity: 0; transition: opacity 0.38s var(--ease);
+}
+.modal.is-open .modal__backdrop { opacity: 1; }
 @keyframes fade { from { opacity: 0; } }
+@keyframes modalContentIn { from { opacity: 0; transform: translateY(8px); } }
+.modal .is-loaded { animation: modalContentIn 0.45s var(--modal-ease) both; }
 
 .modal__panel {
   position: relative; display: flex; flex-direction: column;
-  width: min(1080px, 100%); max-height: min(88vh, 900px);
+  width: min(1240px, 100%); max-height: min(90vh, 940px);
   border: 1px solid var(--border); border-radius: var(--radius-lg);
   background: linear-gradient(165deg, var(--modal-a), var(--modal-b) 72%);
   box-shadow: var(--shadow-lg); overflow: hidden;
+  opacity: 0; transform: translateY(28px) scale(0.97);
+  transition: opacity 0.3s var(--ease), transform 0.38s var(--ease);
+  will-change: transform, opacity;
 }
+.modal.is-open .modal__panel {
+  opacity: 1; transform: none;
+  transition: opacity 0.35s var(--ease), transform 0.55s var(--modal-ease);
+}
+.modal__main, .modal__aside { overscroll-behavior: contain; }
 .modal__head {
   display: flex; gap: 20px; align-items: flex-start; justify-content: space-between;
   padding: 26px clamp(18px, 3vw, 32px); border-bottom: 1px solid var(--border);
@@ -610,7 +630,7 @@ body.is-scrolled .nav {
 }
 .modal__close:hover { color: var(--text); border-color: color-mix(in srgb, var(--danger) 55%, transparent); transform: rotate(90deg); }
 
-.modal__body { display: grid; grid-template-columns: 300px 1fr; overflow: hidden; flex: 1; min-height: 0; }
+.modal__body { display: grid; grid-template-columns: 370px 1fr; overflow: hidden; flex: 1; min-height: 0; }
 .modal__aside { padding: 26px clamp(18px, 3vw, 26px); border-right: 1px solid var(--border); overflow-y: auto; display: grid; gap: 30px; align-content: start; background: var(--surface-1); }
 .modal__main { padding: 26px clamp(18px, 3vw, 32px); overflow-y: auto; min-width: 0; }
 .modal__block-title {
@@ -727,8 +747,10 @@ body.has-fatal-error .main, body.has-fatal-error .footer { display: none; }
 @media (max-width: 1000px) {
   .hero__inner { grid-template-columns: 1fr; }
   .hero__card { max-width: 460px; }
-  .modal__body { grid-template-columns: 1fr; }
+  /* Écran étroit : langages + release en haut, puis le README, le tout dans un seul défilement. */
+  .modal__body { grid-template-columns: 1fr; grid-template-rows: auto auto; align-content: start; overflow-y: auto; overscroll-behavior: contain; }
   .modal__aside { border-right: 0; border-bottom: 1px solid var(--border); overflow: visible; }
+  .modal__main { overflow: visible; }
   .chart__svg { width: 170px; }
 }
 

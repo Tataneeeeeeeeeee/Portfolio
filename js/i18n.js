@@ -67,7 +67,7 @@ const STRINGS = {
     'stat.watchers': 'Watchers',
 
     'modal.chart': 'Language breakdown',
-    'modal.releases': 'Latest releases',
+    'modal.releases': 'Latest release',
     'modal.readme': 'README',
     'modal.close': 'Close dialog',
     'modal.noReadme': 'This repository has no README.',
@@ -150,7 +150,7 @@ const STRINGS = {
     'stat.watchers': 'Observateurs',
 
     'modal.chart': 'Répartition des langages',
-    'modal.releases': 'Dernières versions',
+    'modal.releases': 'Dernière version',
     'modal.readme': 'README',
     'modal.close': 'Fermer la fenêtre',
     'modal.noReadme': 'Ce dépôt n’a pas de README.',

@@ -12,7 +12,7 @@ import { loadProfileData } from './data-loader.js';
 import { fetchUserRepos, fetchOrgRepos, fetchProfile, clearCache, rateLimit, RateLimitError } from './github-api.js';
 import { $, el, notice, toast, renderHero, renderAbout, renderSkills, renderContact, initNavigation, icon } from './ui.js';
 import { renderRepoSection, initModal, openRepoModal } from './projects.js';
-import { initSmoothScroll, initScrollAnimations, animateHero, initCardHover, animateModalOpen, refreshScrollTriggers } from './animations.js';
+import { initSmoothScroll, initScrollAnimations, animateHero, initCardHover, refreshScrollTriggers } from './animations.js';
 import { initTheme } from './theme.js';
 import { initLang, setLang, getLang, applyStaticText, initLangSwitch, setLangBusy, t } from './i18n.js';
 import { translateData, translateRepos, isTranslationEnabled, clearTranslationCache } from './translate.js';
@@ -85,7 +85,7 @@ async function boot() {
 }
 
 const openModal = (repo) => openRepoModal(repo, {
-  onOpen: () => { state.scroller?.stop?.(); animateModalOpen(); },
+  onOpen: () => state.scroller?.stop?.(),
   onClose: () => state.scroller?.start?.(),
 });
 

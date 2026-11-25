@@ -120,7 +120,7 @@ export async function renderRepoSection(container, reposPromise, { onOpen, empty
 
 /* ----------------------------------------------------------------- modal -- */
 
-let modalState = { lastFocused: null, onClose: null };
+let modalState = { lastFocused: null, onClose: null, closeTimer: null, token: 0 };
 
 function markdownToHtml(markdown, repo) {
   if (!window.marked) return `<pre class="readme__raw">${escapeHtml(markdown)}</pre>`;
@@ -149,7 +149,8 @@ function markdownToHtml(markdown, repo) {
 
 function releaseList(releases) {
   if (!releases.length) return notice(t('modal.noReleases'), { tone: 'muted' });
-  return el('ul', { class: 'releases' }, releases.map((r) =>
+  // Seule la release la plus récente est affichée.
+  return el('ul', { class: 'releases' }, releases.slice(0, 1).map((r) =>
     el('li', { class: 'release' },
       el('div', { class: 'release__head' },
         el('a', { class: 'release__tag', href: r.url, target: '_blank', rel: 'noopener', html: `${icon('tag', { size: 14 })}<span>${escapeHtml(r.tag)}</span>` }),
@@ -164,11 +165,17 @@ export function initModal() {
   const closeBtn = $('#modal-close');
 
   const close = () => {
+    if (!modal.classList.contains('is-open')) return;
     modal.classList.remove('is-open');
     modal.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('no-scroll');
-    modalState.onClose?.();
-    modalState.lastFocused?.focus?.();
+    modalState.lastFocused?.focus?.({ preventScroll: true });
+    // Laisse le panneau finir sa sortie avant de rendre le scroll à la page.
+    clearTimeout(modalState.closeTimer);
+    modalState.closeTimer = setTimeout(() => {
+      document.body.classList.remove('no-scroll');
+      document.body.style.removeProperty('--scrollbar-w');
+      modalState.onClose?.();
+    }, 380);
   };
 
   closeBtn.addEventListener('click', close);
@@ -216,26 +223,42 @@ export async function openRepoModal(repo, { onOpen, onClose } = {}) {
   releasesSlot.replaceChildren(el('div', { class: 'sk sk--line' }), el('div', { class: 'sk sk--line sk--short' }));
   readmeSlot.replaceChildren(el('div', { class: 'sk sk--line' }), el('div', { class: 'sk sk--line' }), el('div', { class: 'sk sk--line sk--short' }));
 
+  [chartSlot, releasesSlot, readmeSlot].forEach((slot) => slot.classList.remove('is-loaded'));
+  modal.querySelectorAll('.modal__body, .modal__main, .modal__aside').forEach((pane) => { pane.scrollTop = 0; });
+
+  clearTimeout(modalState.closeTimer);
+  if (!document.body.classList.contains('no-scroll')) {
+    // Compense la disparition de la scrollbar pour éviter un saut de mise en page.
+    document.body.style.setProperty('--scrollbar-w', `${window.innerWidth - document.documentElement.clientWidth}px`);
+    document.body.classList.add('no-scroll');
+  }
   modal.classList.add('is-open');
   modal.setAttribute('aria-hidden', 'false');
-  document.body.classList.add('no-scroll');
-  $('#modal-close').focus();
+  $('#modal-close').focus({ preventScroll: true });
   onOpen?.();
 
+  const token = ++modalState.token;
+  const reveal = () => [chartSlot, releasesSlot, readmeSlot].forEach((slot) => slot.classList.add('is-loaded'));
+
   try {
-    const { readme, releases, languages } = await getDetails(repo);
+    const details = await getDetails(repo);
+    if (token !== modalState.token) return; // une autre modale a été ouverte entre-temps
+    const { readme, releases, languages } = details;
     chartSlot.replaceChildren(renderLanguageDonut(languages));
     releasesSlot.replaceChildren(releaseList(releases));
     readmeSlot.innerHTML = readme
       ? `<div class="readme">${markdownToHtml(readme.markdown, repo)}</div>`
       : '';
     if (!readme) readmeSlot.replaceChildren(notice(t('modal.noReadme'), { tone: 'muted' }));
+    reveal();
   } catch (err) {
+    if (token !== modalState.token) return;
     const message = err instanceof RateLimitError
       ? err.message
       : t('modal.error');
     chartSlot.replaceChildren();
     releasesSlot.replaceChildren();
     readmeSlot.replaceChildren(notice(message, { tone: 'error' }));
+    reveal();
   }
 }

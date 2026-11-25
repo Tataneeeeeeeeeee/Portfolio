@@ -121,10 +121,3 @@ export function initCardHover(root = document) {
     if (card) gsap.to(card, { rotateY: 0, rotateX: 0, duration: 0.6, ease: 'power3.out' });
   }, true);
 }
-
-/** Modal open/close transition. */
-export function animateModalOpen() {
-  if (!window.gsap || prefersReducedMotion()) return;
-  const panel = document.querySelector('.modal__panel');
-  if (panel) window.gsap.fromTo(panel, { opacity: 0, y: 40, scale: 0.985 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: 'power3.out' });
-}
