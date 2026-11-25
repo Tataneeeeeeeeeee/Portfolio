@@ -404,6 +404,7 @@ body.is-scrolled .nav {
   background: var(--surface-1); backdrop-filter: blur(10px);
   font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono);
 }
+.status[hidden] { display: none; }
 .status__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); }
 .status__label { letter-spacing: 0.09em; text-transform: uppercase; font-size: 0.71rem; }
 .status[data-state='available'] .status__dot {
