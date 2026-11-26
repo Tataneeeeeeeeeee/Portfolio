@@ -514,6 +514,14 @@ body.is-translating .main { opacity: 0.35; filter: blur(3px); pointer-events: no
 }
 .chip:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--lavender) 50%, transparent); color: var(--text); background: var(--surface-3); }
 .chip__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--lavender); }
+/* Logo teinté à la couleur de la marque, mêlée au texte pour rester lisible sur les deux thèmes. */
+.chip__logo {
+  display: inline-flex; flex: none; margin-left: -3px;
+  color: color-mix(in srgb, var(--brand, var(--lavender)) 72%, var(--text));
+  transition: color 0.2s, transform 0.2s var(--ease);
+}
+.chip__logo .icon { display: block; }
+.chip:hover .chip__logo { color: color-mix(in srgb, var(--brand, var(--lavender)) 88%, var(--text)); transform: scale(1.08); }
 
 .softskill {
   display: flex; gap: 14px; padding: 20px;
